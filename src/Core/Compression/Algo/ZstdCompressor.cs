@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NileCore.Raar.Abstractions.Compression;
+using System;
 using ZstdSharp;
 namespace NileCore.Raar.Core.Compression
 {

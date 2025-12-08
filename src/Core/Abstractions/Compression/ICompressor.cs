@@ -1,4 +1,4 @@
-﻿namespace NileCore.Raar.Core.Compression
+﻿namespace NileCore.Raar.Abstractions.Compression
 {
     public interface ICompressor
     {

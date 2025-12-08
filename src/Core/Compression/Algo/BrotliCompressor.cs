@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using NileCore.Raar.Abstractions.Compression;
+using System.IO;
 using System.IO.Compression;
 
 namespace NileCore.Raar.Core.Compression

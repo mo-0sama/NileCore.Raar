@@ -10,11 +10,17 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
 		<PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.4">
+			<PrivateAssets>all</PrivateAssets>
+			<!--<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>-->
+		</PackageReference>
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\Abstractions\NileCore.Raar.Abstractions.csproj" />
+	  <ProjectReference Include="..\..\Core\Abstractions\NileCore.Raar.Abstractions.csproj" />
 	</ItemGroup>
 </Project>

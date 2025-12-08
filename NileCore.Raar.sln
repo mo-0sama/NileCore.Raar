@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.0.11217.181 d18.0
+VisualStudioVersion = 18.0.11217.181
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
@@ -14,6 +14,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NileCore.Raar.Core.Compression", "src\Core\Compression\NileCore.Raar.Core.Compression.csproj", "{95DDD8F7-DB5E-92E5-5C8D-363511303EA4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NileCore.Raar.Core", "src\Core\Core\NileCore.Raar.Core.csproj", "{9979BFE4-0DEA-E494-96E5-8F20A9D681AE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Caching", "Caching", "{20CFFE79-4FDE-4C02-98ED-5E6E76886EB7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NileCore.Raar.Core.HybridCache", "src\Caching\HybridCache\NileCore.Raar.Core.HybridCache.csproj", "{D4B05BB3-D566-01CA-4018-A3A65468AE98}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NileCore.Raar.Abstractions", "src\Core\Abstractions\NileCore.Raar.Abstractions.csproj", "{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -49,6 +55,30 @@ Global
 		{9979BFE4-0DEA-E494-96E5-8F20A9D681AE}.Release|x64.Build.0 = Release|Any CPU
 		{9979BFE4-0DEA-E494-96E5-8F20A9D681AE}.Release|x86.ActiveCfg = Release|Any CPU
 		{9979BFE4-0DEA-E494-96E5-8F20A9D681AE}.Release|x86.Build.0 = Release|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Debug|x64.Build.0 = Debug|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Debug|x86.Build.0 = Debug|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Release|x64.ActiveCfg = Release|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Release|x64.Build.0 = Release|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Release|x86.ActiveCfg = Release|Any CPU
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98}.Release|x86.Build.0 = Release|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Debug|x64.Build.0 = Debug|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Debug|x86.Build.0 = Debug|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Release|x64.ActiveCfg = Release|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Release|x64.Build.0 = Release|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Release|x86.ActiveCfg = Release|Any CPU
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -58,6 +88,9 @@ Global
 		{1188FC29-6841-2B7F-D680-EE3519BF48A4} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{95DDD8F7-DB5E-92E5-5C8D-363511303EA4} = {8D626EA8-CB54-BC41-363A-217881BEBA6E}
 		{9979BFE4-0DEA-E494-96E5-8F20A9D681AE} = {8D626EA8-CB54-BC41-363A-217881BEBA6E}
+		{20CFFE79-4FDE-4C02-98ED-5E6E76886EB7} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{D4B05BB3-D566-01CA-4018-A3A65468AE98} = {20CFFE79-4FDE-4C02-98ED-5E6E76886EB7}
+		{423BC450-28A1-F123-E04E-FF4B7F2EEDC1} = {8D626EA8-CB54-BC41-363A-217881BEBA6E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0022C92B-25A3-4734-991C-623778504320}

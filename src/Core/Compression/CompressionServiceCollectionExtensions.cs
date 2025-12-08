@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NileCore.Raar.Abstractions.Compression;
 
 namespace NileCore.Raar.Core.Compression
 {

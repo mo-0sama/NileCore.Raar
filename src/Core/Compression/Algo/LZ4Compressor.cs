@@ -1,4 +1,5 @@
 ﻿using K4os.Compression.LZ4;
+using NileCore.Raar.Abstractions.Compression;
 using System;
 namespace NileCore.Raar.Core.Compression
 {
