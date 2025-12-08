@@ -1,0 +1,49 @@
+name: Multi-Package NuGet Build & Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Publish only when pushing a version tag
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-pack-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Restore dependencies
+        run: dotnet restore NileCore.Raar.sln
+
+      - name: Build solution
+        run: dotnet build NileCore.Raar.sln -c Release --no-restore
+
+      - name: Run Tests (if available)
+        run: dotnet test NileCore.Raar.sln --no-build --verbosity normal
+
+      - name: Pack all NuGet projects
+        run: |
+          mkdir -p ./artifacts/packages
+          dotnet pack NileCore.Raar.sln -c Release --no-build -o ./artifacts/packages
+
+      - name: Publish all packages to NuGet
+        run: |
+          for pkg in ./artifacts/packages/*.nupkg; do
+            echo "Publishing $pkg ..."
+            dotnet nuget push "$pkg" \
+              --api-key "${{ secrets.NUGET_KEY }}" \
+              --source "https://api.nuget.org/v3/index.json" \
+              --skip-duplicate
+          done
+
+      - name: Create GitHub Release (Optional)
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
