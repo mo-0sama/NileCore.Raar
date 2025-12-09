@@ -54,7 +54,7 @@ namespace NileCore.Raar.Caching.HybridCache
             var lazy = _factoryLocks.GetOrAdd(key, _ => new Lazy<Task<object>>(async () =>
             {
                 var secondCheck = await GetAsync<T>(key);
-                if (secondCheck.IsEmpty())
+                if (!secondCheck.IsEmpty())
                     return secondCheck;
 
                 var value = await factory();

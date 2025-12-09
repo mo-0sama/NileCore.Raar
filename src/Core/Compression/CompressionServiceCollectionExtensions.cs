@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using NileCore.Raar.Abstractions.Compression;
 
 namespace NileCore.Raar.Core.Compression
@@ -13,15 +12,7 @@ namespace NileCore.Raar.Core.Compression
             services.AddSingleton<Lz4Compressor>();
             services.AddSingleton<GzipCompressor>();
             services.AddSingleton<ZstdCompressor>();
-
-            services.AddSingleton<CompressionOptions>(provider =>
-            {
-                var options = provider.GetRequiredService<IOptions<CompressionOptions>>();
-                return options.Value;
-            });
-
             services.AddSingleton<CompressorFactory>();
-
             services.AddSingleton<ICompressor>(provider =>
             {
                 var factory = provider.GetRequiredService<CompressorFactory>();

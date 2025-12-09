@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NileCore.Raar.Abstractions.Compression;
 using System;
 
@@ -7,14 +8,12 @@ namespace NileCore.Raar.Core.Compression
     public class CompressorFactory
     {
         private readonly CompressionType _configAlgorithm;
-        private readonly CompressionOptions options;
         private readonly IServiceProvider provider;
 
-        public CompressorFactory(CompressionOptions options, IServiceProvider provider)
+        public CompressorFactory(IOptions<CompressionOptions> options, IServiceProvider provider)
         {
-            this.options = options;
             this.provider = provider;
-            _configAlgorithm = options.Algorithm;
+            _configAlgorithm = options?.Value.Algorithm ?? CompressionType.None;
         }
 
         public ICompressor GetCompressor() =>
