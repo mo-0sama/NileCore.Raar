@@ -1,4 +1,4 @@
-﻿namespace NileCore.Raar.Core.HybridCache
+﻿namespace NileCore.Raar.Caching.HybridCache
 {
     public class HybridCacheOptions
     {

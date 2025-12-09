@@ -1,4 +1,3 @@
-using NileCore.Raar.Core.HybridCache;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
@@ -13,7 +12,7 @@ using Microsoft.Extensions.Logging;
 using NileCore.Raar.Abstractions.Compression;
 using NileCore.Raar.Core.Extensions;
 
-namespace Calc.Application.Caching
+namespace NileCore.Raar.Caching.HybridCache
 {
     public class HybridCacheService: IHybridCache
     {

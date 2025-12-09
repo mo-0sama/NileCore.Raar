@@ -1,7 +1,5 @@
-﻿using Calc.Application.Caching;
-using Microsoft.Extensions.DependencyInjection;
-using NileCore.Raar.Core.HybridCache;
-namespace NileCore.Raar.Core.HybridCache
+﻿using Microsoft.Extensions.DependencyInjection;
+namespace NileCore.Raar.Caching.HybridCache
 {
     public static class HybridCacheServiceCollectionExtensions
     {
@@ -10,12 +8,7 @@ namespace NileCore.Raar.Core.HybridCache
             //services.AddMemoryCache();
             services.AddSingleton<IHybridCache, HybridCacheService>();
 
-            services.Configure<HybridCacheOptions>(_ => new HybridCacheOptions());
-            //services.AddSingleton<HybridCacheOptions>(provider =>
-            //{
-            //    var options = provider.GetRequiredService<IOptions<HybridCacheOptions>>();
-            //    return options.Value;
-            //});
+            services.AddOptions<HybridCacheOptions>();
 
             return services;
         }
