@@ -13,5 +13,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\Core\Abstractions\NileCore.Raar.Abstractions.csproj" />
+		<ProjectReference Include="..\..\Core\Core\NileCore.Raar.Core.csproj" />
 	</ItemGroup>
 </Project>

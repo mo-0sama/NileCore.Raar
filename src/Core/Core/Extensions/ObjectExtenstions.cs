@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace NileCore.Raar.Abstractions.Extensions
+namespace NileCore.Raar.Core.Extensions
 {
     public static class ObjectExtenstions
     {

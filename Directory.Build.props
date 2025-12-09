@@ -8,7 +8,6 @@
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageOutputPath>$(SolutionDir)artifacts/packages</PackageOutputPath>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
 	<IsPackable>true</IsPackable>
 	<SignAssembly>true</SignAssembly>
 	<PackageTags>$(PackageTags)</PackageTags>

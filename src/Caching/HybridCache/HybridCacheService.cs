@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NileCore.Raar.Abstractions.Compression;
-using NileCore.Raar.Abstractions.Extensions;
+using NileCore.Raar.Core.Extensions;
 
 namespace Calc.Application.Caching
 {

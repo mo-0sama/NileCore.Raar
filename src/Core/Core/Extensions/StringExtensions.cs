@@ -2,7 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace NileCore.Raar.Abstractions.Extensions
+namespace NileCore.Raar.Core.Extensions
 {
     public static class StringExtensions
     {
@@ -17,7 +17,6 @@ namespace NileCore.Raar.Abstractions.Extensions
             return builder.ToString();
         }
         #endregion
-
         #region Format
         public static string AddLeadingZero(this string val, int length)
         {

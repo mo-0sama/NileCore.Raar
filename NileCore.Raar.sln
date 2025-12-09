@@ -17,7 +17,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NileCore.Raar.Core", "src\C
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Caching", "Caching", "{20CFFE79-4FDE-4C02-98ED-5E6E76886EB7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NileCore.Raar.Core.HybridCache", "src\Caching\HybridCache\NileCore.Raar.Core.HybridCache.csproj", "{D4B05BB3-D566-01CA-4018-A3A65468AE98}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NileCore.Raar.Caching.HybridCache", "src\Caching\HybridCache\NileCore.Raar.Caching.HybridCache.csproj", "{D4B05BB3-D566-01CA-4018-A3A65468AE98}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NileCore.Raar.Abstractions", "src\Core\Abstractions\NileCore.Raar.Abstractions.csproj", "{423BC450-28A1-F123-E04E-FF4B7F2EEDC1}"
 EndProject
