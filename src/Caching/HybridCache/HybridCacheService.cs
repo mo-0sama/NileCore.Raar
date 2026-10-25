@@ -1,239 +1,410 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-using System.Collections.Concurrent;
-using System.Text;
-using Microsoft.Extensions.Options;
-using System;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NileCore.Raar.Abstractions.Compression;
 using NileCore.Raar.Core.Extensions;
 
 namespace NileCore.Raar.Caching.HybridCache
 {
-    public class HybridCacheService: IHybridCache
+    /// <summary>
+    /// High-performance two-tier hybrid cache service with stampede protection, compression, pluggable serialization,
+    /// sliding expiration, tag-based invalidation, and bulk operations.
+    /// </summary>
+    public class HybridCacheService : IHybridCache
     {
-        public HybridCacheService(
-        IMemoryCache memoryCache,
-        IDistributedCache distributedCache,
-        IOptions<HybridCacheOptions> cacheSettings,
-        IServiceProvider serviceProvider,
-        ILogger<HybridCacheService> logger)
-        {
-            this.memoryCache = memoryCache;
-            this.logger = logger;
-            this.distributedCache = distributedCache;
-            _cacheSettings = cacheSettings.Value;
-            this.compressor = serviceProvider.GetService<ICompressor>() ?? new NoneCompressor();
-        }
+        private readonly IMemoryCache _memoryCache;
+        private readonly IDistributedCache _distributedCache;
         private readonly HybridCacheOptions _cacheSettings;
-        private readonly ICompressor compressor;
-        private readonly IMemoryCache memoryCache;
-        private readonly IDistributedCache distributedCache;
-        private readonly ILogger<HybridCacheService> logger;
-        private static readonly ConcurrentDictionary<string, Lazy<Task<object>>> _factoryLocks = new ConcurrentDictionary<string, Lazy<Task<object>>>();
-        private static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings()
+        private readonly ILogger<HybridCacheService> _logger;
+        private readonly ICompressor _compressor;
+        private readonly ICacheSerializer _serializer;
+        private readonly ICacheEventHandler? _eventHandler;
+
+        // Instance-scoped locks prevent cross-instance memory leaks
+        private readonly ConcurrentDictionary<string, Lazy<Task<object?>>> _factoryLocks = new();
+
+        // In-memory index tracking keys associated with tags
+        private readonly ConcurrentDictionary<string, ConcurrentBag<string>> _tagIndex = new();
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="HybridCacheService"/> with direct dependency injection.
+        /// </summary>
+        [ActivatorUtilitiesConstructor]
+        public HybridCacheService(
+            IMemoryCache memoryCache,
+            IDistributedCache distributedCache,
+            IOptions<HybridCacheOptions> cacheSettings,
+            ILogger<HybridCacheService> logger,
+            ICompressor? compressor = null,
+            ICacheSerializer? serializer = null,
+            ICacheEventHandler? eventHandler = null)
         {
-            ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-            ContractResolver = new ProtectedPropertyContractResolver()
-        };
+            _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
+            _distributedCache = distributedCache ?? throw new ArgumentNullException(nameof(distributedCache));
+            _cacheSettings = cacheSettings?.Value ?? new HybridCacheOptions();
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _compressor = compressor ?? new NoneCompressor();
+            _serializer = serializer ?? new SystemTextJsonCacheSerializer();
+            _eventHandler = eventHandler;
+        }
 
-        private static string GetVersionKey(string key) => $"{key}:version";
+        /// <summary>
+        /// Backward-compatible constructor accepting <see cref="IServiceProvider"/>.
+        /// </summary>
+        public HybridCacheService(
+            IMemoryCache memoryCache,
+            IDistributedCache distributedCache,
+            IOptions<HybridCacheOptions> cacheSettings,
+            IServiceProvider serviceProvider,
+            ILogger<HybridCacheService> logger)
+            : this(
+                memoryCache,
+                distributedCache,
+                cacheSettings,
+                logger,
+                serviceProvider?.GetService<ICompressor>(),
+                serviceProvider?.GetService<ICacheSerializer>(),
+                serviceProvider?.GetService<ICacheEventHandler>())
+        {
+        }
 
-        public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory,
+        private string BuildKey(string key) =>
+            string.IsNullOrEmpty(_cacheSettings.KeyPrefix) ? key : $"{_cacheSettings.KeyPrefix}:{key}";
+
+        private string GetVersionKey(string key) => $"{BuildKey(key)}:version";
+
+        private string GetTagKey(string tag) => $"{BuildKey(tag)}:tag";
+
+        public Task<T> GetOrSetAsync<T>(
+            string key,
+            Func<Task<T>> factory,
             TimeSpan? memoryCacheExpiration = null,
-            TimeSpan? redisCacheExpiration = null) where T : class
+            TimeSpan? redisCacheExpiration = null,
+            CancellationToken cancellationToken = default)
         {
-            var cached = await GetAsync<T>(key);
-            if (cached != null)
-                return cached;
+            return GetOrSetAsync<T>(key, _ => factory(), memoryCacheExpiration, redisCacheExpiration, cancellationToken);
+        }
 
-            var lazy = _factoryLocks.GetOrAdd(key, _ => new Lazy<Task<object>>(async () =>
+        public async Task<T> GetOrSetAsync<T>(
+            string key,
+            Func<CancellationToken, Task<T>> factory,
+            TimeSpan? memoryCacheExpiration = null,
+            TimeSpan? redisCacheExpiration = null,
+            CancellationToken cancellationToken = default)
+        {
+            var cached = await GetAsync<T>(key, cancellationToken).ConfigureAwait(false);
+            if (!EqualityComparer<T?>.Default.Equals(cached, default))
+                return cached!;
+
+            var lockKey = BuildKey(key);
+            var lazy = _factoryLocks.GetOrAdd(lockKey, _ => new Lazy<Task<object?>>(async () =>
             {
-                var secondCheck = await GetAsync<T>(key);
-                if (!secondCheck.IsEmpty())
+                var secondCheck = await GetAsync<T>(key, cancellationToken).ConfigureAwait(false);
+                if (!EqualityComparer<T?>.Default.Equals(secondCheck, default))
                     return secondCheck;
 
-                var value = await factory();
-                if (!value.IsEmpty())
-                    await SetAsync(key, value, memoryCacheExpiration, redisCacheExpiration);
+                var value = await factory(cancellationToken).ConfigureAwait(false);
+                if (!EqualityComparer<T?>.Default.Equals(value, default))
+                {
+                    await SetAsync(key, value!, memoryCacheExpiration, redisCacheExpiration, cancellationToken).ConfigureAwait(false);
+                }
 
-                return value!;
+                return value;
             }));
 
             try
             {
-                return (T)await lazy.Value;
+                var result = await lazy.Value.ConfigureAwait(false);
+                return (T)result!;
             }
             finally
             {
-                _factoryLocks.TryRemove(key, out _);
+                _factoryLocks.TryRemove(lockKey, out _);
             }
         }
 
-        public async Task<T> GetAsync<T>(string key) where T : class
+        public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
         {
+            string fullKey = BuildKey(key);
             try
             {
-                // 1. Check Memory Cache (No change, still uses CachedItem<T>)
-                if (_cacheSettings.EnableMemoryCache && memoryCache.TryGetValue(key, out CachedItem<T> cachedItem))
+                // 1. Check L1 Memory Cache
+                if (_cacheSettings.EnableMemoryCache && _memoryCache.TryGetValue(fullKey, out CachedItem<T>? cachedItem) && cachedItem != null)
                 {
                     if (_cacheSettings.EnableDistributedCache)
                     {
                         var versionKey = GetVersionKey(key);
-                        var redisVersion = await distributedCache.GetStringAsync(versionKey); // Version is small, keep as string
+                        var redisVersion = await _distributedCache.GetStringAsync(versionKey, cancellationToken).ConfigureAwait(false);
 
                         if (!string.IsNullOrEmpty(redisVersion) && redisVersion == cachedItem.Version)
                         {
+                            if (_eventHandler != null) await _eventHandler.OnCacheHitAsync(key, CacheLayer.Memory, cancellationToken).ConfigureAwait(false);
                             return cachedItem.Value;
                         }
                         else
                         {
-                            memoryCache.Remove(key);
+                            _memoryCache.Remove(fullKey);
                         }
                     }
                     else
                     {
+                        if (_eventHandler != null) await _eventHandler.OnCacheHitAsync(key, CacheLayer.Memory, cancellationToken).ConfigureAwait(false);
                         return cachedItem.Value;
                     }
                 }
 
+                // 2. Check L2 Distributed Cache
                 if (_cacheSettings.EnableDistributedCache)
                 {
-                    var compressedBytes = await distributedCache.GetAsync(key);
-
+                    var compressedBytes = await _distributedCache.GetAsync(fullKey, cancellationToken).ConfigureAwait(false);
                     if (compressedBytes != null && compressedBytes.Length > 0)
                     {
-                        var decompressedBytes = compressor.Decompress(compressedBytes);
+                        var decompressedBytes = await _compressor.DecompressAsync(compressedBytes, cancellationToken).ConfigureAwait(false);
+                        var item = _serializer.Deserialize<CachedItem<T>>(decompressedBytes);
 
-                        var redisValue = Encoding.UTF8.GetString(decompressedBytes);
-                        var deserializedValue = JsonConvert.DeserializeObject<T>(redisValue, SerializerSettings);
-
-                        var versionKey = GetVersionKey(key);
-                        var redisVersion = await distributedCache.GetStringAsync(versionKey);
-
-                        if (_cacheSettings.EnableMemoryCache)
+                        if (item != null)
                         {
-                            var cacheItem = new CachedItem<T>
+                            if (_cacheSettings.EnableMemoryCache)
                             {
-                                Value = deserializedValue,
-                                Version = redisVersion ?? Guid.NewGuid().ToString() // Use version from Redis if available
-                            };
-                            memoryCache.Set(key, cacheItem, TimeSpan.FromMinutes(30));
+                                var defaultMemExp = _cacheSettings.DefaultMemoryCacheExpiration;
+                                _memoryCache.Set(fullKey, item, new MemoryCacheEntryOptions
+                                {
+                                    AbsoluteExpirationRelativeToNow = defaultMemExp
+                                });
+                            }
+
+                            if (_eventHandler != null) await _eventHandler.OnCacheHitAsync(key, CacheLayer.Distributed, cancellationToken).ConfigureAwait(false);
+                            return item.Value;
                         }
-
-                        return deserializedValue;
                     }
                 }
 
-                return null;
+                if (_eventHandler != null) await _eventHandler.OnCacheMissAsync(key, cancellationToken).ConfigureAwait(false);
+                return default;
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error getting cache for key: {Key}", key);
-                return null;
+                if (_eventHandler != null) await _eventHandler.OnCacheErrorAsync(key, ex, cancellationToken).ConfigureAwait(false);
+                _logger.LogError(ex, "Error getting cache for key: {Key}", key);
+                return default;
             }
         }
 
-        public async Task SetAsync<T>(string key, T value,
+        public Task SetAsync<T>(
+            string key,
+            T value,
             TimeSpan? memoryCacheExpiration = null,
-            TimeSpan? redisCacheExpiration = null) where T : class
+            TimeSpan? redisCacheExpiration = null,
+            CancellationToken cancellationToken = default)
         {
-            try
-            {
-                var memExpiration = memoryCacheExpiration ?? TimeSpan.FromMinutes(30);
-                var redisExpiration = redisCacheExpiration ?? TimeSpan.FromHours(4);
-
-                var version = DateTime.Now.Ticks.ToString();
-
-                if (_cacheSettings.EnableDistributedCache)
-                {
-                    var serializedString = JsonConvert.SerializeObject(value, SerializerSettings);
-                    var serializedBytes = Encoding.UTF8.GetBytes(serializedString);
-
-                    var compressedBytes = compressor.Compress(serializedBytes);
-
-                    var versionKey = GetVersionKey(key);
-
-                    await distributedCache.SetAsync(key, compressedBytes, new DistributedCacheEntryOptions
-                    {
-                        AbsoluteExpirationRelativeToNow = redisExpiration
-                    });
-
-                    await distributedCache.SetStringAsync(versionKey, version, new DistributedCacheEntryOptions
-                    {
-                        AbsoluteExpirationRelativeToNow = redisExpiration
-                    });
-                }
-
-                if (_cacheSettings.EnableMemoryCache)
-                {
-                    var cacheItem = new CachedItem<T>
-                    {
-                        Value = value,
-                        Version = version
-                    };
-                    memoryCache.Set(key, cacheItem, memExpiration);
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error setting cache for key: {Key}", key);
-            }
+            return SetAsync<T>(key, value, memoryCacheExpiration, redisCacheExpiration, null, null, cancellationToken);
         }
 
-        public async Task RemoveAsync(string key)
+        public Task SetAsync<T>(
+            string key,
+            T value,
+            IEnumerable<string> tags,
+            TimeSpan? memoryCacheExpiration = null,
+            TimeSpan? redisCacheExpiration = null,
+            TimeSpan? slidingExpiration = null,
+            CancellationToken cancellationToken = default)
         {
+            return SetAsync<T>(key, value, memoryCacheExpiration, redisCacheExpiration, slidingExpiration, tags, cancellationToken);
+        }
+
+        public Task SetWithSlidingExpirationAsync<T>(
+            string key,
+            T value,
+            TimeSpan slidingExpiration,
+            IEnumerable<string>? tags = null,
+            CancellationToken cancellationToken = default)
+        {
+            return SetAsync<T>(key, value, null, null, slidingExpiration, tags, cancellationToken);
+        }
+
+        public async Task SetAsync<T>(
+            string key,
+            T value,
+            TimeSpan? memoryCacheExpiration,
+            TimeSpan? redisCacheExpiration,
+            TimeSpan? slidingExpiration,
+            IEnumerable<string>? tags = null,
+            CancellationToken cancellationToken = default)
+        {
+            string fullKey = BuildKey(key);
             try
             {
+                var memExp = memoryCacheExpiration ?? _cacheSettings.DefaultMemoryCacheExpiration;
+                var distExp = redisCacheExpiration ?? _cacheSettings.DefaultDistributedCacheExpiration;
+                var version = Guid.NewGuid().ToString("N");
+
+                var cachedItem = new CachedItem<T>
+                {
+                    Value = value,
+                    Version = version
+                };
+
+                // 1. Set L1 Memory Cache
                 if (_cacheSettings.EnableMemoryCache)
                 {
-                    memoryCache.Remove(key);
+                    var memOptions = new MemoryCacheEntryOptions();
+                    if (slidingExpiration.HasValue)
+                    {
+                        memOptions.SlidingExpiration = slidingExpiration.Value;
+                    }
+                    else
+                    {
+                        memOptions.AbsoluteExpirationRelativeToNow = memExp;
+                    }
+
+                    _memoryCache.Set(fullKey, cachedItem, memOptions);
                 }
 
+                // 2. Set L2 Distributed Cache
                 if (_cacheSettings.EnableDistributedCache)
                 {
+                    var serializedBytes = _serializer.Serialize(cachedItem);
+                    var compressedBytes = await _compressor.CompressAsync(serializedBytes, cancellationToken).ConfigureAwait(false);
                     var versionKey = GetVersionKey(key);
 
-                    await distributedCache.RemoveAsync(key);
-                    await distributedCache.RemoveAsync(versionKey);
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error removing cache for key: {Key}", key);
-            }
-        }
-    }
-
-    internal class CachedItem<T>
-    {
-        public T Value { get; set; }
-        public string Version { get; set; }
-    }
-
-    internal class ProtectedPropertyContractResolver : DefaultContractResolver
-    {
-        protected override Newtonsoft.Json.Serialization.JsonProperty CreateProperty(System.Reflection.MemberInfo member, MemberSerialization memberSerialization)
-        {
-            var property = base.CreateProperty(member, memberSerialization);
-
-            if (member is System.Reflection.PropertyInfo propInfo)
-            {
-                if (!property.Writable)
-                {
-                    var setter = propInfo.GetSetMethod(nonPublic: true);
-                    if (setter != null)
+                    var distOptions = new DistributedCacheEntryOptions();
+                    if (slidingExpiration.HasValue)
                     {
-                        property.Writable = true;
+                        distOptions.SlidingExpiration = slidingExpiration.Value;
+                    }
+                    else
+                    {
+                        distOptions.AbsoluteExpirationRelativeToNow = distExp;
+                    }
+
+                    await _distributedCache.SetAsync(fullKey, compressedBytes, distOptions, cancellationToken).ConfigureAwait(false);
+                    await _distributedCache.SetStringAsync(versionKey, version, distOptions, cancellationToken).ConfigureAwait(false);
+                }
+
+                // 3. Track Tags
+                if (tags != null)
+                {
+                    foreach (var tag in tags)
+                    {
+                        if (string.IsNullOrWhiteSpace(tag)) continue;
+                        string tagKey = GetTagKey(tag);
+                        var bag = _tagIndex.GetOrAdd(tagKey, _ => new ConcurrentBag<string>());
+                        bag.Add(key);
                     }
                 }
-            }
 
-            return property;
+                if (_eventHandler != null) await _eventHandler.OnCacheSetAsync(key, CacheLayer.Memory, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                if (_eventHandler != null) await _eventHandler.OnCacheErrorAsync(key, ex, cancellationToken).ConfigureAwait(false);
+                _logger.LogError(ex, "Error setting cache for key: {Key}", key);
+            }
         }
+
+        public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+        {
+            string fullKey = BuildKey(key);
+            try
+            {
+                if (_cacheSettings.EnableMemoryCache)
+                {
+                    _memoryCache.Remove(fullKey);
+                }
+
+                if (_cacheSettings.EnableDistributedCache)
+                {
+                    var versionKey = GetVersionKey(key);
+                    await _distributedCache.RemoveAsync(fullKey, cancellationToken).ConfigureAwait(false);
+                    await _distributedCache.RemoveAsync(versionKey, cancellationToken).ConfigureAwait(false);
+                }
+
+                if (_eventHandler != null) await _eventHandler.OnCacheRemovedAsync(key, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                if (_eventHandler != null) await _eventHandler.OnCacheErrorAsync(key, ex, cancellationToken).ConfigureAwait(false);
+                _logger.LogError(ex, "Error removing cache for key: {Key}", key);
+            }
+        }
+
+        public async Task InvalidateByTagAsync(string tag, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(tag)) return;
+            string tagKey = GetTagKey(tag);
+            if (_tagIndex.TryRemove(tagKey, out var keys))
+            {
+                var distinctKeys = new HashSet<string>(keys);
+                foreach (var k in distinctKeys)
+                {
+                    await RemoveAsync(k, cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+
+        public async Task InvalidateByTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default)
+        {
+            if (tags == null) return;
+            foreach (var tag in tags)
+            {
+                await InvalidateByTagAsync(tag, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        public async Task<IDictionary<string, T?>> GetManyAsync<T>(IEnumerable<string> keys, CancellationToken cancellationToken = default)
+        {
+            if (keys == null) return new Dictionary<string, T?>();
+            var keyList = keys.Distinct().ToList();
+            var results = new ConcurrentDictionary<string, T?>();
+
+            var tasks = keyList.Select(async k =>
+            {
+                var val = await GetAsync<T>(k, cancellationToken).ConfigureAwait(false);
+                results[k] = val;
+            });
+
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+            return results;
+        }
+
+        public async Task SetManyAsync<T>(
+            IDictionary<string, T> items,
+            TimeSpan? memoryCacheExpiration = null,
+            TimeSpan? redisCacheExpiration = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (items == null || items.Count == 0) return;
+
+            var tasks = items.Select(kvp =>
+                SetAsync(kvp.Key, kvp.Value, memoryCacheExpiration, redisCacheExpiration, cancellationToken));
+
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+        }
+
+        public async Task RemoveManyAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default)
+        {
+            if (keys == null) return;
+            var keyList = keys.Distinct().ToList();
+
+            var tasks = keyList.Select(k => RemoveAsync(k, cancellationToken));
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Wrapper for cached value and its version token for distributed cache synchronization.
+    /// </summary>
+    public class CachedItem<T>
+    {
+        public T Value { get; set; } = default!;
+        public string Version { get; set; } = string.Empty;
     }
 }

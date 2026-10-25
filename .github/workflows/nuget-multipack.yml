@@ -1,13 +1,16 @@
-name: Multi-Package NuGet Build & Publish
+name: Multi-Package NuGet CI, Build & Publish
 
 on:
   push:
+    branches: [ main, master, Enhancement ]
     tags:
       - 'v*.*.*'  # Publish only when pushing a version tag
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  build-pack-publish:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,7 +20,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.x
+          dotnet-version: |
+            8.x
+            10.x
 
       - name: Restore dependencies
         run: dotnet restore NileCore.Raar.sln
@@ -25,15 +30,21 @@ jobs:
       - name: Build solution
         run: dotnet build NileCore.Raar.sln -c Release --no-restore
 
-      - name: Run Tests (if available)
-        run: dotnet test NileCore.Raar.sln --no-build --verbosity normal
+      - name: Run Tests
+        run: dotnet test NileCore.Raar.sln -c Release --no-build --verbosity normal
+
+      - name: Verify Performance Baseline
+        shell: pwsh
+        run: pwsh scripts/compare-baseline.ps1 -ThresholdPercent 20
 
       - name: Pack all NuGet projects
+        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           mkdir -p ./artifacts/packages
           dotnet pack NileCore.Raar.sln -c Release --no-build -o ./artifacts/packages
 
       - name: Publish all packages to NuGet
+        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           for pkg in ./artifacts/packages/*.nupkg; do
             echo "Publishing $pkg ..."
@@ -43,7 +54,8 @@ jobs:
               --skip-duplicate
           done
 
-      - name: Create GitHub Release (Optional)
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true

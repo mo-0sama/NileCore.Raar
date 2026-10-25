@@ -1,30 +1,42 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using System;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NileCore.Raar.Abstractions.Compression;
-using System;
 
 namespace NileCore.Raar.Core.Compression
 {
+    /// <summary>
+    /// Factory for resolving configured and specific compression implementations.
+    /// </summary>
     public class CompressorFactory
     {
         private readonly CompressionType _configAlgorithm;
-        private readonly IServiceProvider provider;
+        private readonly IServiceProvider _provider;
 
         public CompressorFactory(IOptions<CompressionOptions> options, IServiceProvider provider)
         {
-            this.provider = provider;
-            _configAlgorithm = options?.Value.Algorithm ?? CompressionType.None;
+            _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+            _configAlgorithm = options?.Value?.Algorithm ?? CompressionType.None;
         }
 
-        public ICompressor GetCompressor() =>
-            _configAlgorithm switch
+        /// <summary>
+        /// Gets the configured default compressor.
+        /// </summary>
+        public ICompressor GetCompressor() => GetCompressor(_configAlgorithm);
+
+        /// <summary>
+        /// Gets a compressor for the specified algorithm.
+        /// </summary>
+        public ICompressor GetCompressor(CompressionType type) =>
+            type switch
             {
-                CompressionType.None => provider.GetRequiredService<NoneCompressor>(),
-                CompressionType.Brotli => provider.GetRequiredService<BrotliCompressor>(),
-                CompressionType.LZ4 => provider.GetRequiredService<Lz4Compressor>(),
-                CompressionType.Gzip => provider.GetRequiredService<GzipCompressor>(),
-                CompressionType.Zstd => provider.GetRequiredService<ZstdCompressor>(),
-                _ => throw new NotSupportedException("Unknown compression type")
+                CompressionType.None => _provider.GetRequiredService<NoneCompressor>(),
+                CompressionType.Brotli => _provider.GetRequiredService<BrotliCompressor>(),
+                CompressionType.LZ4 => _provider.GetRequiredService<Lz4Compressor>(),
+                CompressionType.Gzip => _provider.GetRequiredService<GzipCompressor>(),
+                CompressionType.Zstd => _provider.GetRequiredService<ZstdCompressor>(),
+                CompressionType.Deflate => _provider.GetRequiredService<DeflateCompressor>(),
+                _ => throw new NotSupportedException($"Unsupported compression type: {type}")
             };
     }
 }

@@ -1,15 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<ItemGroup>
 		<PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
 		<PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
 		<PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4">
 			<PrivateAssets>all</PrivateAssets>
 			<!--<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>-->
 		</PackageReference>
+		<PackageReference Include="System.Text.Json" Version="8.0.5" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\Core\Abstractions\NileCore.Raar.Abstractions.csproj" />

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Core\Abstractions\NileCore.Raar.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Core\Compression\NileCore.Raar.Core.Compression.csproj" />
+    <ProjectReference Include="..\..\src\Core\Core\NileCore.Raar.Core.csproj" />
+    <ProjectReference Include="..\..\src\Caching\HybridCache\NileCore.Raar.Caching.HybridCache.csproj" />
+  </ItemGroup>
+
+</Project>
