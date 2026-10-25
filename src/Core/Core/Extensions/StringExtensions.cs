@@ -48,6 +48,36 @@ namespace NileCore.Raar.Core.Extensions
             return ToHexString(bytes);
         }
 
+        /// <summary>
+        /// Computes the fast non-cryptographic xxHash32 integer hash.
+        /// </summary>
+        public static uint HashXXHash32(this string input, uint seed = 0)
+        {
+            if (input == null) throw new ArgumentNullException(nameof(input));
+            return Utilities.FastHashes.XxHash32(Encoding.UTF8.GetBytes(input), seed);
+        }
+
+        /// <summary>
+        /// Computes the fast non-cryptographic xxHash32 hash as a lowercase hex string.
+        /// </summary>
+        public static string HashXXHash(this string input, uint seed = 0) =>
+            HashXXHash32(input, seed).ToString("x8");
+
+        /// <summary>
+        /// Computes the fast non-cryptographic MurmurHash3 (32-bit) integer hash.
+        /// </summary>
+        public static uint HashMurmur3_32(this string input, uint seed = 0)
+        {
+            if (input == null) throw new ArgumentNullException(nameof(input));
+            return Utilities.FastHashes.MurmurHash3_32(Encoding.UTF8.GetBytes(input), seed);
+        }
+
+        /// <summary>
+        /// Computes the fast non-cryptographic MurmurHash3 (32-bit) hash as a lowercase hex string.
+        /// </summary>
+        public static string HashMurmur3(this string input, uint seed = 0) =>
+            HashMurmur3_32(input, seed).ToString("x8");
+
         private static string ToHexString(byte[] bytes)
         {
             var builder = new StringBuilder(bytes.Length * 2);

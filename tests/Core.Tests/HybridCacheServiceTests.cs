@@ -346,5 +346,19 @@ namespace NileCore.Raar.Core.Tests
             await cache.RemoveAsync("event-key");
             Assert.Equal(1, handler.Removes);
         }
+
+        [Fact]
+        public async Task HybridCacheHealthCheck_Returns_Healthy_Status()
+        {
+            var memCache = new MemoryCache(new MemoryCacheOptions());
+            var distCache = new InMemoryDistCache();
+            var options = Options.Create(new HybridCacheOptions { EnableMemoryCache = true, EnableDistributedCache = true });
+
+            var healthCheck = new HybridCacheHealthCheck(memCache, distCache, options);
+            var result = await healthCheck.CheckHealthAsync(new Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckContext());
+
+            Assert.Equal(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy, result.Status);
+            Assert.Contains("operational", result.Description);
+        }
     }
 }

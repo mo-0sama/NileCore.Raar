@@ -116,6 +116,19 @@ namespace NileCore.Raar.Core.Tests
             Assert.Equal(SampleData, largeDecompressed);
         }
 
+        [Fact]
+        public async Task WithMetrics_Records_Telemetry_And_Compresses_Properly()
+        {
+            var rawCompressor = new BrotliCompressor();
+            var instrumented = rawCompressor.WithMetrics("brotli-test");
+
+            byte[] compressed = await instrumented.CompressAsync(SampleData);
+            Assert.NotNull(compressed);
+
+            byte[] decompressed = await instrumented.DecompressAsync(compressed);
+            Assert.Equal(SampleData, decompressed);
+        }
+
         private static ICompressor CreateCompressor(CompressionType type) =>
             type switch
             {

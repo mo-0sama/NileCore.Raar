@@ -12,6 +12,7 @@
 		</PackageReference>
 		<PackageReference Include="System.Text.Json" Version="8.0.5" />
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.0" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\Core\Abstractions\NileCore.Raar.Abstractions.csproj" />

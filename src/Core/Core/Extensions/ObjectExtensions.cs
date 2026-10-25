@@ -77,6 +77,36 @@ namespace NileCore.Raar.Core.Extensions
                 throw new ArgumentNullException(paramName);
             return argument;
         }
+
+        /// <summary>
+        /// Transforms an object using the specified mapping delegate.
+        /// </summary>
+        public static TResult Map<TSource, TResult>(this TSource source, Func<TSource, TResult> mapFunc)
+        {
+            if (mapFunc == null) throw new ArgumentNullException(nameof(mapFunc));
+            return mapFunc(source);
+        }
+
+        /// <summary>
+        /// Returns an inspection string representation of the object's properties.
+        /// </summary>
+        public static string Dump<T>(this T? obj)
+        {
+            if (obj == null) return "null";
+            var dict = ToDictionary(obj);
+            if (dict.Count == 0) return obj.ToString() ?? string.Empty;
+            var sb = new System.Text.StringBuilder();
+            sb.Append(typeof(T).Name).Append(" { ");
+            bool first = true;
+            foreach (var kvp in dict)
+            {
+                if (!first) sb.Append(", ");
+                sb.Append(kvp.Key).Append(": ").Append(kvp.Value?.ToString() ?? "null");
+                first = false;
+            }
+            sb.Append(" }");
+            return sb.ToString();
+        }
     }
 
     /// <summary>

@@ -5,7 +5,35 @@ All notable changes to the NileCore.Raar project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2026-10-25
+## [1.2.0] - 2026-10-25
+
+### Added
+- **Multi-Targeting Frameworks**:
+  - All core library packages now multi-target `.NET Standard 2.1`, `.NET 8.0`, and `.NET 10.0`.
+  - Enables modern runtime optimizations and vectorization on .NET 8 / .NET 10 while preserving complete compatibility for .NET Standard 2.1 environments.
+- **Named Compression Profiles**:
+  - `services.AddRaarCompression("profileName", options => ...)`: Register multiple named compressor profiles in DI with custom algorithms and compression levels.
+  - `ICompressorFactory.GetCompressor("profileName")` and `ICompressorFactory.CreateCompressor(CompressionOptions)`: Dynamically retrieve or generate configured compressor instances by profile name.
+- **ASP.NET Core Health Check Integration**:
+  - `HybridCacheHealthCheck`: Verifies end-to-end read and write health across both L1 (in-memory) and L2 (distributed) cache tiers.
+  - `services.AddHealthChecks().AddRaarHybridCacheHealthCheck(...)`: Fluent extension to register the health check in ASP.NET Core health check pipelines.
+- **OpenTelemetry Compression Metrics**:
+  - `CompressionMetrics`: Native telemetry instrumentation via `System.Diagnostics.Metrics.Meter`.
+  - Meters: `raar.compression.original_bytes` (Counter), `raar.compression.compressed_bytes` (Counter), `raar.compression.duration_ms` (Histogram).
+  - `ICompressor.WithMetrics()`: Decorator extension to transparently monitor throughput, duration, and compression ratios in any compressor.
+- **Non-Cryptographic Fast Hashing**:
+  - `StringExtensions.HashXXHash32` and `StringExtensions.HashXXHash`: High-performance 32-bit XXHash implementation.
+  - `StringExtensions.HashMurmur3_32` and `StringExtensions.HashMurmur3`: High-performance 32-bit MurmurHash3 implementation.
+- **Core Utility Extensions**:
+  - `DateTimeExtensions.ToRelativeTime()`: Human-readable relative time formatting (e.g., "just now", "5 minutes ago", "in 2 days", "yesterday", "tomorrow") with deterministic testing support via optional `relativeTo`.
+  - `ObjectExtensions.Map<TSource, TResult>()`: Functional pipeline transformation method.
+  - `ObjectExtensions.Dump<T>()`: Readable debug and diagnostic string inspector.
+- **Sample Application**:
+  - `samples/WebApi.Sample`: Comprehensive ASP.NET Core Minimal API demonstrating named compression profiles, hybrid caching with tag invalidation, health checks (`/health`), and OpenTelemetry metric reporting.
+
+---
+
+## [1.1.0] - 2026-10-20
 
 ### Added
 - **Asynchronous Compression**: `CompressAsync` and `DecompressAsync` in `ICompressor` and all implementations.

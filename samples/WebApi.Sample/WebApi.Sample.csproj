@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Core\Abstractions\NileCore.Raar.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Core\Compression\NileCore.Raar.Core.Compression.csproj" />
+    <ProjectReference Include="..\..\src\Core\Core\NileCore.Raar.Core.csproj" />
+    <ProjectReference Include="..\..\src\Caching\HybridCache\NileCore.Raar.Caching.HybridCache.csproj" />
+    <ProjectReference Include="..\..\src\Core\Json\NileCore.Raar.Core.Json.csproj" />
+    <ProjectReference Include="..\..\src\Core\Net\NileCore.Raar.Net.csproj" />
+  </ItemGroup>
+
+</Project>

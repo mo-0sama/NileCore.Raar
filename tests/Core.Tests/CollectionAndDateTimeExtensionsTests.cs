@@ -100,5 +100,18 @@ namespace NileCore.Raar.Core.Tests
             var all = EnumExtensions.ToList<TestStatus>();
             Assert.Equal(3, all.Count);
         }
+
+        [Fact]
+        public void DateTimeExtensions_ToRelativeTime_Formats_Correctly()
+        {
+            var now = DateTime.UtcNow;
+
+            Assert.Equal("just now", now.AddSeconds(-10).ToRelativeTime());
+            Assert.Equal("5 minutes ago", now.AddMinutes(-5).ToRelativeTime());
+            Assert.Equal("2 hours ago", now.AddHours(-2).ToRelativeTime());
+            Assert.Equal("yesterday", now.AddDays(-1).ToRelativeTime());
+            Assert.Equal("3 days ago", now.AddDays(-3).ToRelativeTime());
+            Assert.Equal("in 5 minutes", now.AddMinutes(5).ToRelativeTime());
+        }
     }
 }

@@ -96,5 +96,29 @@ namespace NileCore.Raar.Core.Tests
             Assert.True(text.ContainsAny(StringComparison.Ordinal, "cat", "fox", "dog"));
             Assert.False(text.ContainsAny(StringComparison.Ordinal, "cat", "bear", "dog"));
         }
+
+        [Fact]
+        public void HashXXHash32_And_HashMurmur3_Are_Deterministic()
+        {
+            string input = "NileCore.Raar fast non-cryptographic hashing benchmark string";
+
+            // xxHash32
+            uint xxInt1 = input.HashXXHash32();
+            uint xxInt2 = input.HashXXHash32();
+            string xxHex = input.HashXXHash();
+
+            Assert.Equal(xxInt1, xxInt2);
+            Assert.Equal(8, xxHex.Length);
+            Assert.Equal(xxInt1.ToString("x8"), xxHex);
+
+            // MurmurHash3
+            uint mmInt1 = input.HashMurmur3_32();
+            uint mmInt2 = input.HashMurmur3_32();
+            string mmHex = input.HashMurmur3();
+
+            Assert.Equal(mmInt1, mmInt2);
+            Assert.Equal(8, mmHex.Length);
+            Assert.Equal(mmInt1.ToString("x8"), mmHex);
+        }
     }
 }

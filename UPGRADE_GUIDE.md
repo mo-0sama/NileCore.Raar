@@ -1,6 +1,6 @@
-# NileCore.Raar — Upgrade Guide (v1.0.x → v1.1.0)
+# NileCore.Raar — Upgrade Guide (v1.0.x → v1.1.0 → v1.2.0)
 
-This guide provides instructions and examples for upgrading projects utilizing the **NileCore.Raar** suite of NuGet packages from version `1.0.x` to `1.1.0`.
+This guide provides instructions and examples for upgrading projects utilizing the **NileCore.Raar** suite of NuGet packages from version `1.0.x` through `1.1.0` to `1.2.0`.
 
 ---
 
@@ -8,9 +8,10 @@ This guide provides instructions and examples for upgrading projects utilizing t
 1. [Overview & Highlights](#1-overview--highlights)
 2. [Breaking Changes & Deprecations](#2-breaking-changes--deprecations)
 3. [Architecture & Packaging Changes](#3-architecture--packaging-changes)
-4. [New APIs & Features](#4-new-apis--features)
-5. [Migration Walkthroughs](#5-migration-walkthroughs)
+4. [New APIs & Features in v1.1.0](#4-new-apis--features-in-v110)
+5. [Migration Walkthroughs (v1.0 → v1.1)](#5-migration-walkthroughs-v10--v11)
 6. [Performance Baseline & Verification](#6-performance-baseline--verification)
+7. [Upgrading to v1.2.0](#7-upgrading-to-v120)
 
 ---
 
@@ -263,3 +264,79 @@ All changes in v1.1.0 have been verified against pre-change baselines using the 
 pwsh scripts/compare-baseline.ps1 -ThresholdPercent 20
 ```
 Status: **✅ No performance regressions detected across all algorithms, hybrid caching operations, and core string/object utility suites.**
+
+---
+
+## 7. Upgrading to v1.2.0
+
+Version 1.2.0 is **100% binary and backward-compatible** with v1.1.0 and v1.0.x. No code changes are required when upgrading package versions.
+
+### 7.1 Multi-Targeting Frameworks (`netstandard2.1`, `net8.0`, `net10.0`)
+All library packages now multi-target:
+```xml
+<TargetFrameworks>netstandard2.1;net8.0;net10.0</TargetFrameworks>
+```
+When consuming packages in .NET 8 or .NET 10 applications, the compiler automatically binds to the optimized modern runtime target, utilizing modern JIT intrinsics and zero-copy runtime benefits while maintaining compatibility for .NET Standard 2.1 projects.
+
+### 7.2 Named Compression Profiles
+You can register multiple distinct compression profiles in Dependency Injection:
+```csharp
+// Program.cs
+builder.Services.AddRaarCompression("fast", options =>
+{
+    options.Algorithm = CompressionType.LZ4;
+});
+
+builder.Services.AddRaarCompression("archive", options =>
+{
+    options.Algorithm = CompressionType.Zstd;
+    options.ZstdLevel = 9;
+});
+
+// Consumption via ICompressorFactory
+app.MapPost("/archive", async (ICompressorFactory factory, byte[] data) =>
+{
+    var compressor = factory.GetCompressor("archive");
+    return await compressor.CompressAsync(data);
+});
+```
+
+### 7.3 ASP.NET Core Health Checks
+Check hybrid cache operational readiness and L1/L2 connectivity:
+```csharp
+builder.Services.AddHealthChecks()
+    .AddRaarHybridCacheHealthCheck("hybrid_cache", tags: new[] { "ready", "cache" });
+
+app.MapHealthChecks("/health");
+```
+
+### 7.4 OpenTelemetry Metrics
+Wrap any `ICompressor` with `WithMetrics()` to export telemetry to OpenTelemetry / Prometheus:
+```csharp
+var compressor = factory.GetCompressor("fast").WithMetrics();
+byte[] compressed = await compressor.CompressAsync(payload);
+// Automatically records raar.compression.original_bytes, compressed_bytes, and duration_ms
+```
+
+### 7.5 Fast Non-Cryptographic Hashing
+Zero-allocation 32-bit XXHash and Murmur3:
+```csharp
+string hash1 = "payload".HashXXHash32();
+string hash2 = "payload".HashMurmur3_32();
+```
+
+### 7.6 Relative Time & Inspection Utilities
+```csharp
+string relative = DateTime.UtcNow.AddMinutes(-5).ToRelativeTime(); // "5 minutes ago"
+string future = DateTime.UtcNow.AddHours(2).ToRelativeTime();     // "in 2 hours"
+
+// Functional mapping
+var dto = user.Map(u => new UserDto(u.Id, u.Name));
+
+// Debug dump
+string inspection = dto.Dump();
+```
+
+### 7.7 Interactive Sample
+Explore `samples/WebApi.Sample` to see all v1.2.0 features running in an ASP.NET Core Minimal API.
+

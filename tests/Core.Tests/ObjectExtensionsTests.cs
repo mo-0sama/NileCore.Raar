@@ -119,5 +119,23 @@ namespace NileCore.Raar.Core.Tests
             Assert.False(ObjectExtenstions.IsEmpty(user));
 #pragma warning restore CS0618 // Type or member is obsolete
         }
+
+        [Fact]
+        public void Map_Transforms_Source_Correctly()
+        {
+            var user = new UserPoco { Id = 7, Name = "Target" };
+            int idTimesTen = user.Map(u => u.Id * 10);
+            Assert.Equal(70, idTimesTen);
+        }
+
+        [Fact]
+        public void Dump_Produces_Readable_Representation()
+        {
+            var user = new UserPoco { Id = 10, Name = "InspectMe", IsActive = true };
+            string dump = user.Dump();
+            Assert.Contains("UserPoco", dump);
+            Assert.Contains("Id: 10", dump);
+            Assert.Contains("Name: InspectMe", dump);
+        }
     }
 }
